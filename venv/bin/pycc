@@ -1,0 +1,3 @@
+#!/Users/mac/Documents/GitHub/conversation_ai_api/venv/bin/python3
+from numba.pycc import main
+main()
