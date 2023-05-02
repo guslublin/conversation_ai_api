@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.http import JsonResponse
+from django.http import HttpResponse
 from django.conf import settings
 from django.shortcuts import render
 
@@ -9,7 +10,7 @@ import io
 
 # Create your views here.
 
-openai.api_key = "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"
+openai.api_key = "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"
 
 def conversation(request):
     # Aquí debe agregar la lógica de su chatbot
@@ -67,9 +68,9 @@ def guardar_archivo_audio(request):
         generated_text = response.choices[0].text
 
         # Formatear: Porque aparecen 4 caracteres antes en su respuesta
-        formatted_generated_text = generated_text[2:len(generated_text)]
+        # formatted_generated_text = generated_text[2:len(generated_text)]
 
         # Responder a la interfaz gráfica la respuesta generada por openAi
-        return JsonResponse({'status': 'Archivo de audio traducido a texto exitosamente.', 'generated_text': formatted_generated_text})
+        return JsonResponse({'status': 'Archivo de audio traducido a texto exitosamente.', 'generated_text': generated_text})
     else:
         return JsonResponse({'status': 'Método de solicitud HTTP no permitido.'}, status=405)
