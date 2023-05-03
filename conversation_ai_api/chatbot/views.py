@@ -1,16 +1,29 @@
 from django.shortcuts import render
 from django.http import JsonResponse
-from django.http import HttpResponse
+# from django.http import HttpResponse
 from django.conf import settings
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
+
 
 import openai
-import whisper
-import io
+# import whisper
+# import io
+
+
+# import pytesseract
+# import PyPDF2
+# from PIL import Image
+from PyPDF2 import PdfReader 
+from pdfminer.high_level import extract_text as fallback_text_extraction 
+
 
 # Create your views here.
 
-openai.api_key = "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"
+
+openai.api_key = "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"
+
+
 
 def conversation(request):
     # Aquí debe agregar la lógica de su chatbot
@@ -18,6 +31,8 @@ def conversation(request):
         'message': 'Hola! Soy Gastón.',
     }
     return JsonResponse(response_data)
+
+
 
 def guardar_archivo_audio(request):
     if request.method == 'POST':
@@ -58,7 +73,7 @@ def guardar_archivo_audio(request):
         response = openai.Completion.create(
             engine=model,
             prompt=transcript["text"],
-            max_tokens=50,
+            max_tokens=1000,
             n=1,
             stop=None,
             temperature=0.5,
@@ -74,3 +89,56 @@ def guardar_archivo_audio(request):
         return JsonResponse({'status': 'Archivo de audio traducido a texto exitosamente.', 'generated_text': generated_text})
     else:
         return JsonResponse({'status': 'Método de solicitud HTTP no permitido.'}, status=405)
+
+
+
+def upload_pdf(request):
+    if request.method == 'POST':
+
+        request.upload_handlers.pop(0)    
+
+        print('upload_pdf')
+        if request.method == 'POST' and request.FILES['pdf']:
+            pdf_file = request.FILES['pdf']
+            print(pdf_file.name)
+            with open('assets/audio_files/' + pdf_file.name, 'wb') as f:
+                for chunk in pdf_file.chunks():
+                    f.write(chunk)
+            read_pdf_sin_scan(pdf_file)
+            # read_pdf_con_scan(pdf_file)
+            return JsonResponse({'success': True})
+        else:
+            return JsonResponse({'success': False})
+        
+
+
+# def read_pdf_con_scan(pdf):
+#     print('Dentro de read_pdf_con_scan: ' + pdf.name)
+
+
+
+def read_pdf_sin_scan(pdf):
+
+    print('Dentro de read_pdf_sin_scan: ' + pdf.name)
+
+    text=""
+
+    try: 
+        reader=PdfReader(pdf) 
+        for page in reader.pages: 
+            text+=page.extract_text()
+ 
+        print('Try - Text: ' + text)
+
+        request_voice_prompt(text)
+
+    except Exception as exc: 
+        text=fallback_text_extraction(pdf)
+        print('Exc: ' + exc)
+        print('Text: ' + text)
+
+def request_voice_prompt(text):
+
+    text_prompt = 'En relación al siguiente texto: "' + text +  '" la siguiente consulta: ' 
+
+    print(text_prompt)

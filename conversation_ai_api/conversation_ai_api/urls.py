@@ -18,10 +18,12 @@ from django.contrib import admin
 from django.urls import path
 from chatbot.views import conversation
 from chatbot.views import guardar_archivo_audio
+from chatbot.views import upload_pdf
 from django.views.decorators.csrf import csrf_exempt
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('conversation/', conversation),
     path('audio/', csrf_exempt(guardar_archivo_audio), name='guardar_archivo_audio'),
+    path('upload_pdf/', csrf_exempt(upload_pdf), name='upload_pdf'),
 ]
