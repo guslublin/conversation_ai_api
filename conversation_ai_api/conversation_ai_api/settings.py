@@ -35,6 +35,7 @@ FILE_UPLOAD_HANDLERS = [
 # Application definition
 
 INSTALLED_APPS = [
+    "django.contrib.sites",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -42,7 +43,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'chatbot',
-    'corsheaders'
+    'corsheaders',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -62,6 +64,9 @@ CORS_ORIGIN_ALLOW_ALL=True
 
 CSRF_TRUSTED_ORIGINS = ['http://localhost:4200','https://*.127.0.0.1']
 
+SESSION_COOKIE_SECURE = True
+
+CSRF_COOKIE_SECURE = True
 
 TEMPLATES = [
     {
