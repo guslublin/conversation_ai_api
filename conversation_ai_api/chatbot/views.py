@@ -58,39 +58,84 @@ from langchain.document_loaders import UnstructuredPDFLoader, OnlinePDFLoader, P
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import Chroma, Pinecone, Qdrant
-from langchain.embeddings.openai import OpenAIEmbeddings
+# from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 import pinecone
+from pinecone import Pinecone, ServerlessSpec
 from langchain.llms import OpenAI
 from langchain.chains.question_answering import load_qa_chain
-from langchain.chains import RetrievalQAWithSourcesChain
-from langchain.chat_models import ChatOpenAI
-from langchain.embeddings import CohereEmbeddings
+# from langchain.chains import RetrievalQAWithSourcesChain
+# from langchain.chat_models import ChatOpenAI
+# from langchain.embeddings import CohereEmbeddings
 from qdrant_client import QdrantClient
 # from qdrant_client import QdrantClient
+from pinecone.core.openapi.shared.exceptions import PineconeApiException
 
 
 # Inicialización de openAI
-openai.api_key = "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"
+openai.api_key = ""
+# openai.api_key = ""
 
 # Inicialización de Pinecone
-OPENAI_API_KEY = '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'
-PINECONE_API_KEY = '339c3992-2c17-4d86-a097-17c1140f1d71'
-PINECONE_API_ENV = 'us-west1-gcp-free'
+OPENAI_API_KEY = ''
+# OPENAI_API_KEY = ''
+# OPENAI_API_KEY = ''
+# PINECONE_API_KEY = ''
+PINECONE_API_KEY = ''
+# PINECONE_API_ENV = 'us-west1-gcp-free'
+PINECONE_API_ENV = 'us-east-1'
 
 
 # Inicialización de Cohere
-cohere_api_key = 'bLKANujveQGajetRNlNLxTFGZMJ8OpFP61fdL5MG'
+# cohere_api_key = ''
 qdrant_url = 'https://046ffe43-cabf-4d01-b0a3-36fb0b12ce9a.us-east-1-0.aws.cloud.qdrant.io:6333'
-qdrant_api_key = 'KzTbvZ_ZHHyYH9XM3DvaV2DR_vr8Wj8hlEKhQUByTktsiTN40Wz62g'
+qdrant_api_key = ''
 
 embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 
-pinecone.init(
-    api_key=PINECONE_API_KEY,  # find at app.pinecone.io
-    environment=PINECONE_API_ENV  # next to api key in console
+pc = Pinecone(
+    api_key=PINECONE_API_KEY
 )
 
-index_name = "langchain2-index"
+# Definir el nombre del índice
+index_name = "sample-movies"  # Asegúrate de usar el nombre correcto
+
+# Inicializar Pinecone
+pc = Pinecone(
+    api_key=PINECONE_API_KEY
+)
+
+# Verificar si el índice ya existe
+existing_indexes = pc.list_indexes()
+if index_name not in existing_indexes:
+    try:
+        pc.create_index(
+            name=index_name,
+            dimension=1024,  # Dimensiones según tu configuración
+            metric='cosine',  # Métrica según tu configuración
+            spec=ServerlessSpec(
+                cloud='aws',  # Cloud según tu configuración
+                region='us-east-1'  # Región según tu configuración
+            )
+        )
+    except PineconeApiException as e:
+        if e.status == 409:
+            print(f"El índice '{index_name}' ya existe.")
+        else:
+            raise e
+else:
+    print(f"El índice '{index_name}' ya existe. No se necesita crear uno nuevo.")
+
+# Conectar al índice
+index = pc.Index(index_name)
+
+
+# pinecone.init(
+#     api_key=PINECONE_API_KEY,  # find at app.pinecone.io
+#     environment=PINECONE_API_ENV  # next to api key in console
+# )
+
+# index_name = "conversationainovember2023"
 
 # Definición de funciones:
 
@@ -99,10 +144,6 @@ def obtener_listado_archivos(self):
     archivos = os.listdir(directorio)
     print(archivos)
 
-    # archivos_json = json.dumps(archivos)
-    # print(archivos_json)
-    # return json.dumps(archivos)
-
     return JsonResponse(archivos, safe=False)
 
 def obtener_listado_archivos_procesados(self):
@@ -110,33 +151,21 @@ def obtener_listado_archivos_procesados(self):
     archivos = os.listdir(directorio)
     print(archivos)
 
-    # archivos_json = json.dumps(archivos)
-    # print(archivos_json)
-    # return json.dumps(archivos)
-
     return JsonResponse(archivos, safe=False)
 
-def obtener_listado_archivos_cohere(self):
-    directorio = "assets/pdf_files_cohere"
-    archivos = os.listdir(directorio)
-    print(archivos)
+# def obtener_listado_archivos_cohere(self):
+#     directorio = "assets/pdf_files_cohere"
+#     archivos = os.listdir(directorio)
+#     print(archivos)
 
-    # archivos_json = json.dumps(archivos)
-    # print(archivos_json)
-    # return json.dumps(archivos)
+#     return JsonResponse(archivos, safe=False)
 
-    return JsonResponse(archivos, safe=False)
+# def obtener_listado_archivos_cohere_procesados(self):
+#     directorio = "assets/pdf_files_cohere_procesados"
+#     archivos = os.listdir(directorio)
+#     print(archivos)
 
-def obtener_listado_archivos_cohere_procesados(self):
-    directorio = "assets/pdf_files_cohere_procesados"
-    archivos = os.listdir(directorio)
-    print(archivos)
-
-    # archivos_json = json.dumps(archivos)
-    # print(archivos_json)
-    # return json.dumps(archivos)
-
-    return JsonResponse(archivos, safe=False)
+#     return JsonResponse(archivos, safe=False)
 
 
 def conversation(request):
@@ -224,20 +253,20 @@ def subir_pdf(request):
         return (obtener_listado_archivos(self=any))
 
 
-def subir_pdf_cohere(request):
-    if request.method == 'POST':
-        request.upload_handlers.pop(0)  
-        print('subir_pdf_cohere')
+# def subir_pdf_cohere(request):
+#     if request.method == 'POST':
+#         request.upload_handlers.pop(0)  
+#         print('subir_pdf_cohere')
 
-        if request.method == 'POST' and request.FILES['pdf']:
-            pdf_file = request.FILES['pdf']
-            print('Nombre del PDF: ' + pdf_file.name)
+#         if request.method == 'POST' and request.FILES['pdf']:
+#             pdf_file = request.FILES['pdf']
+#             print('Nombre del PDF: ' + pdf_file.name)
 
-        with open('assets/pdf_files_cohere/' + pdf_file.name, 'wb') as f:
-                for chunk in pdf_file.chunks():
-                    f.write(chunk)
+#         with open('assets/pdf_files_cohere/' + pdf_file.name, 'wb') as f:
+#                 for chunk in pdf_file.chunks():
+#                     f.write(chunk)
 
-        return (obtener_listado_archivos_cohere(self=any))
+#         return (obtener_listado_archivos_cohere(self=any))
 
 
 
@@ -456,46 +485,46 @@ def entrenar_ia(self):
     return JsonResponse({'success': True})
     
 
-def entrenar_ia_cohere(self):
-    directorio = "assets/pdf_files_cohere"
-    directorio_destino = "assets/pdf_files_cohere_procesados"
-    collection_name = 'conversation_ai_1'
-    # collection_name = request.json.get("collection_name")
+# def entrenar_ia_cohere(self):
+#     directorio = "assets/pdf_files_cohere"
+#     directorio_destino = "assets/pdf_files_cohere_procesados"
+#     collection_name = 'conversation_ai_1'
+#     # collection_name = request.json.get("collection_name")
 
-    # text=""
-    texts=""
-    text=""
+#     # text=""
+#     texts=""
+#     text=""
 
-    # Recorrer los archivos del directorio
-    for archivo in os.listdir(directorio):
-        # Obtener el directorio de cada archivo
-        path_completo= os.path.join(directorio, archivo)
+#     # Recorrer los archivos del directorio
+#     for archivo in os.listdir(directorio):
+#         # Obtener el directorio de cada archivo
+#         path_completo= os.path.join(directorio, archivo)
 
-        print(path_completo)
-        print(archivo)
+#         print(path_completo)
+#         print(archivo)
 
-        loader = PyPDFLoader(path_completo)
+#         loader = PyPDFLoader(path_completo)
 
-        print(loader)
+#         print(loader)
 
-        docs = loader.load_and_split()
+#         docs = loader.load_and_split()
 
-        print(docs)
+#         print(docs)
 
-        embeddings = CohereEmbeddings(model="multilingual-22-12", cohere_api_key=cohere_api_key)
+#         embeddings = CohereEmbeddings(model="multilingual-22-12", cohere_api_key=cohere_api_key)
         
-        print(embeddings)
+#         print(embeddings)
 
-        qdrant = Qdrant.from_documents(docs, embeddings, url=qdrant_url, collection_name=collection_name, prefer_grpc=True, api_key=qdrant_api_key)
+#         qdrant = Qdrant.from_documents(docs, embeddings, url=qdrant_url, collection_name=collection_name, prefer_grpc=True, api_key=qdrant_api_key)
         
-        source_path = os.path.join(directorio, archivo)
+#         source_path = os.path.join(directorio, archivo)
 
-        destination_path = os.path.join(directorio_destino, archivo)
+#         destination_path = os.path.join(directorio_destino, archivo)
 
-        move_file(source_path, destination_path)        
-        # return {"collection_name":qdrant.collection_name}
+#         move_file(source_path, destination_path)        
+#         # return {"collection_name":qdrant.collection_name}
     
-    return JsonResponse({'success': True})
+#     return JsonResponse({'success': True})
 
 
 def move_file(source_path, destination_path):
@@ -615,74 +644,74 @@ def consultar_pdf(consulta):
 
     return JsonResponse({'success': True, 'text_response_ai': text_response_ai})
 
-def consultar_pdf_cohere(consulta):
-    print('Consultar_pdf')
-    print(consulta)
+# def consultar_pdf_cohere(consulta):
+#     print('Consultar_pdf')
+#     print(consulta)
 
-    client = QdrantClient(url=qdrant_url, prefer_grpc=True, api_key=qdrant_api_key)
+#     client = QdrantClient(url=qdrant_url, prefer_grpc=True, api_key=qdrant_api_key)
 
-    embeddings = CohereEmbeddings(model="multilingual-22-12", cohere_api_key=cohere_api_key)
-    # embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+#     embeddings = CohereEmbeddings(model="multilingual-22-12", cohere_api_key=cohere_api_key)
+#     # embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 
-    qdrant = Qdrant(client=client, collection_name='conversation_ai_1', embeddings=embeddings)
+#     qdrant = Qdrant(client=client, collection_name='conversation_ai_1', embeddings=embeddings)
 
-    search_results = qdrant.similarity_search(consulta, k=2)
+#     search_results = qdrant.similarity_search(consulta, k=2)
 
-    # Hasta aquí no utiliza OPEN-AI
-    print('Search_results')
-    print(search_results)
+#     # Hasta aquí no utiliza OPEN-AI
+#     print('Search_results')
+#     print(search_results)
 
-    # Solo utiliza para Respuestas con lenguaje natural.
+#     # Solo utiliza para Respuestas con lenguaje natural.
 
-    chain = load_qa_chain(OpenAI(openai_api_key=OPENAI_API_KEY,temperature=0.2), chain_type="stuff")
+#     chain = load_qa_chain(OpenAI(openai_api_key=OPENAI_API_KEY,temperature=0.2), chain_type="stuff")
 
-    results = chain({"input_documents": search_results, "question": consulta}, return_only_outputs=True)
+#     results = chain({"input_documents": search_results, "question": consulta}, return_only_outputs=True)
 
-    # print(results["output_text"])
+#     # print(results["output_text"])
 
-    # return {"results":results["output_text"]}
+#     # return {"results":results["output_text"]}
 
-    # print(pinecone.list_indexes())
-    # index = pinecone.GRPCIndex(index_name)
+#     # print(pinecone.list_indexes())
+#     # index = pinecone.GRPCIndex(index_name)
 
-    # print(index.describe_index_stats())
+#     # print(index.describe_index_stats())
 
-    # text_field = "text"
+#     # text_field = "text"
 
-    # switch back to normal index for langchain
-    # index = pinecone.Index(index_name)
+#     # switch back to normal index for langchain
+#     # index = pinecone.Index(index_name)
 
-    # vectorstore = Pinecone(
-    #     index, embeddings.embed_query, text_field
-    # )
+#     # vectorstore = Pinecone(
+#     #     index, embeddings.embed_query, text_field
+#     # )
 
-    # query = consulta
+#     # query = consulta
 
-    # vector_result = vectorstore.similarity_search(
-    #     query,  # our search query
-    #     k=3  # return 3 most relevant docs
-    # )
+#     # vector_result = vectorstore.similarity_search(
+#     #     query,  # our search query
+#     #     k=3  # return 3 most relevant docs
+#     # )
 
-    # print('Vector resultante: ')
-    # print(vector_result[0])
-    # text_response_ai = vector_result[0].page_content
+#     # print('Vector resultante: ')
+#     # print(vector_result[0])
+#     # text_response_ai = vector_result[0].page_content
 
-    # Hacer pregunta al vector resultante a través de Open AI
-    # llm = OpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
-    # chain = load_qa_chain(llm, chain_type="stuff")
-    # text_response_ai = chain.run(input_documents=vector_result, question=query)
-    # print(text_response_ai)
+#     # Hacer pregunta al vector resultante a través de Open AI
+#     # llm = OpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
+#     # chain = load_qa_chain(llm, chain_type="stuff")
+#     # text_response_ai = chain.run(input_documents=vector_result, question=query)
+#     # print(text_response_ai)
     
 
-    text_response_ai = results["output_text"]
+#     text_response_ai = results["output_text"]
 
-    pusher_client.trigger('chat', 'message', {
-        'theme': 'is-link',
-        'username': 'Conversation UI',
-        'message': text_response_ai
-        })
+#     pusher_client.trigger('chat', 'message', {
+#         'theme': 'is-link',
+#         'username': 'Conversation UI',
+#         'message': text_response_ai
+#         })
 
-    return JsonResponse({'success': True, 'text_response_ai': text_response_ai})
+#     return JsonResponse({'success': True, 'text_response_ai': text_response_ai})
 
 
 def upload_pdf(request):
@@ -884,15 +913,14 @@ def send_pusher_event(request):
 
     return JsonResponse({'success': True})
 
-@csrf_exempt
+# @csrf_exempt
+# def send_pusher_event_cohere(request):
+#     request.upload_handlers.pop(0)    
+#     data = json.loads(request.body)
+#     print(data)
+#     # print(data['consulta'])
+#     if request.method == 'POST':
+#         consultar_pdf_cohere(data['consulta'])
+#         # utilizar respuesta.consulta para consultar a pinecone
 
-def send_pusher_event_cohere(request):
-    request.upload_handlers.pop(0)    
-    data = json.loads(request.body)
-    print(data)
-    # print(data['consulta'])
-    if request.method == 'POST':
-        consultar_pdf_cohere(data['consulta'])
-        # utilizar respuesta.consulta para consultar a pinecone
-
-    return JsonResponse({'success': True})
+#     return JsonResponse({'success': True})
