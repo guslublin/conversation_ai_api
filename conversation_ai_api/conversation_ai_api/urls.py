@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import path
 from chatbot.views import conversation
 from chatbot.views import guardar_archivo_audio
-from chatbot.views import upload_pdf
+# from chatbot.views import upload_pdf
 from chatbot.views import subir_pdf
 # from chatbot.views import subir_pdf_cohere
 from chatbot.views import entrenar_ia
@@ -48,7 +48,7 @@ urlpatterns = [
     path('send_pusher_event/', send_pusher_event),
     # path('send_pusher_event_cohere/', send_pusher_event_cohere),
     path('audio/', csrf_exempt(guardar_archivo_audio), name='guardar_archivo_audio'),
-    path('upload_pdf/', csrf_exempt(upload_pdf), name='upload_pdf'),
+    # path('upload_pdf/', csrf_exempt(upload_pdf), name='upload_pdf'),
     path('subir_pdf/', csrf_exempt(subir_pdf), name='subir_pdf'),
     # path('subir_pdf_cohere/', csrf_exempt(subir_pdf_cohere), name='subir_pdf_cohere'),
     

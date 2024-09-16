@@ -5,7 +5,15 @@ from django.conf import settings
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 
+from openai import OpenAI
+
 import openai
+
+
+# client = OpenAI()
+
+
+client = OpenAI(api_key="")
 # import whisper
 # import io
 import os
@@ -64,20 +72,21 @@ import pinecone
 from pinecone import Pinecone, ServerlessSpec
 from langchain.llms import OpenAI
 from langchain.chains.question_answering import load_qa_chain
-# from langchain.chains import RetrievalQAWithSourcesChain
-# from langchain.chat_models import ChatOpenAI
+from langchain.chains import RetrievalQAWithSourcesChain
+from langchain.chat_models import ChatOpenAI
 # from langchain.embeddings import CohereEmbeddings
 from qdrant_client import QdrantClient
 # from qdrant_client import QdrantClient
+
 from pinecone.core.openapi.shared.exceptions import PineconeApiException
 
-
 # Inicialización de openAI
-openai.api_key = ""
 # openai.api_key = ""
 
 # Inicialización de Pinecone
 OPENAI_API_KEY = ''
+# OPENAI_API_KEY = ''
+
 # OPENAI_API_KEY = ''
 # OPENAI_API_KEY = ''
 # PINECONE_API_KEY = ''
@@ -98,7 +107,8 @@ pc = Pinecone(
 )
 
 # Definir el nombre del índice
-index_name = "sample-movies"  # Asegúrate de usar el nombre correcto
+index_name = "chat-documents-ai"  # Asegúrate de usar el nombre correcto
+# index_name = "sample-movies"  # Asegúrate de usar el nombre correcto
 
 # Inicializar Pinecone
 pc = Pinecone(
@@ -178,46 +188,41 @@ def conversation(request):
 
 def guardar_archivo_audio(request):
     if request.method == 'POST':
-
+        # Eliminar el primer upload handler
         request.upload_handlers.pop(0)
 
+        # Obtener el archivo de audio desde el request
         audio_file = request.FILES['audio_file']
-        print('Nombre del audio: ' + audio_file.name)
+        print('Nombre del audio:', audio_file.name)
 
+        # Generar el nombre del archivo con extensión .wav
         nombre_audio = audio_file.name + '.wav'
+        print('nombre_audio:', nombre_audio)
 
-        print('nombre_audio: ' + nombre_audio)
-
-        # Guardar archivo en el proyecto
-
+        # Definir la ruta de guardado en el proyecto
         file_path = 'assets/audio_files/' + nombre_audio
+        print('file_path:', file_path)
 
-        print('file_path: ' + file_path)
-        
+        # Guardar el archivo en el sistema de archivos
         with open(file_path, 'wb+') as archivo:
             for chunk in audio_file.chunks():
                 archivo.write(chunk)
-                
 
         print("El archivo se ha guardado en:", file_path)
-        
-        # Obtener texto del audio Con Whisper de manera local: (Más lento)
-        # whisper_model = whisper.load_model("medium")
-        # result = whisper_model.transcribe(file_path)
-        # text_result = result["text"]
-        # print('result: ' + result["text"])
 
-        # Obtener texto del audio Con Whisper desde la api de openAi: (Mucho más rápido)
-        audio_file= open(file_path, "rb")
-        transcript = openai.Audio.transcribe("whisper-1", audio_file)
+        # Abrir el archivo de audio para transcripción
+        with open(file_path, "rb") as audio_file:
+            # Transcribir el audio utilizando la nueva API de OpenAI
+            transcript = openai.Audio.transcribe(model="whisper-1", file=audio_file)
 
-        print('transcript')
-        print(transcript)
+        # Imprimir la transcripción
+        print('transcript:', transcript['text'])
+
         # Llamar a la API de OpenAI utilizando el texto generado por el audio como prompt
         model = "text-davinci-002"
         response = openai.Completion.create(
             engine=model,
-            prompt=transcript["text"],
+            prompt=transcript['text'],
             max_tokens=1000,
             n=1,
             stop=None,
@@ -225,15 +230,15 @@ def guardar_archivo_audio(request):
         )
 
         # Obtener el texto generado por el modelo de OpenAI
-        generated_text = response.choices[0].text
+        generated_text = response.choices[0].text.strip()
+        print('generated_text:', generated_text)
 
-        # Formatear: Porque aparecen 4 caracteres antes en su respuesta
-        # formatted_generated_text = generated_text[2:len(generated_text)]
-
-        # Responder a la interfaz gráfica la respuesta generada por openAi
+        # Devolver la respuesta como JSON
         return JsonResponse({'status': 'Archivo de audio traducido a texto exitosamente.', 'generated_text': generated_text})
+
     else:
         return JsonResponse({'status': 'Método de solicitud HTTP no permitido.'}, status=405)
+
 
 
 def subir_pdf(request):
@@ -302,7 +307,7 @@ def entrenar_ia(self):
                 texts = text_splitter.split_documents(data)
                 print('texts')
                 print(texts)
-                
+
                 print (f'Now you have {len(texts)} documents')
 
 
@@ -324,7 +329,7 @@ def entrenar_ia(self):
                 # docs = docsearch.similarity_search(query, include_metadata=True)
                 # print('docs:')
                 # print(docs)
-                
+
 
 
 
@@ -332,7 +337,7 @@ def entrenar_ia(self):
                 # # Conectar a la api de openAi y enviar docs generados por Pinecone 
                 # llm = OpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
                 # chain = load_qa_chain(llm, chain_type="stuff")
-                
+
                 # text_response_ai = chain.run(input_documents=docs, question=query)
 
                 # print(text_response_ai)  
@@ -347,7 +352,7 @@ def entrenar_ia(self):
                 # Convertir pdf a csv con pdf_tables (No funciona bien, no acepta el pdf)
                 # archivo_nuevo = archivo + '.csv'
                 # path_completo_nuevo = os.path.join(directorio, archivo_nuevo)
-                
+
                 # conversion.csv(path_completo, path_completo_nuevo)
 
 
@@ -369,7 +374,7 @@ def entrenar_ia(self):
 
                 # archivo_nuevo = archivo + '.csv'
                 # path_completo_nuevo = os.path.join(directorio, archivo_nuevo)
-                
+
                 # tabula.convert_into(path_completo, path_completo_nuevo, output_format="csv", pages='all')
 
                 # print(df)
@@ -381,7 +386,7 @@ def entrenar_ia(self):
                 # reader=PdfReader(f) 
                 # for page in reader.pages: 
                 #     text+=page.extract_text()
-                
+
                 # data = pd.read_csv(StringIO(text), engine="python")
                 # data.head()
                 # print(data.head())
@@ -433,11 +438,11 @@ def entrenar_ia(self):
 
 
                 # Entrenar a la IA con el contenido separado de texts sin open ai: (Pendiente de funcionar)
-                
+
                 # index = pinecone.Index(index_name)
 
                 # global qa
-                
+
                 # qa = qa.map(lambda x: {
                 #     'encoding': model.encode(x['context']).tolist()
                 # }, batched=True, batch_size=32)
@@ -483,7 +488,7 @@ def entrenar_ia(self):
                 return JsonResponse({'success': False})
 
     return JsonResponse({'success': True})
-    
+
 
 # def entrenar_ia_cohere(self):
 #     directorio = "assets/pdf_files_cohere"
@@ -512,18 +517,18 @@ def entrenar_ia(self):
 #         print(docs)
 
 #         embeddings = CohereEmbeddings(model="multilingual-22-12", cohere_api_key=cohere_api_key)
-        
+
 #         print(embeddings)
 
 #         qdrant = Qdrant.from_documents(docs, embeddings, url=qdrant_url, collection_name=collection_name, prefer_grpc=True, api_key=qdrant_api_key)
-        
+
 #         source_path = os.path.join(directorio, archivo)
 
 #         destination_path = os.path.join(directorio_destino, archivo)
 
 #         move_file(source_path, destination_path)        
 #         # return {"collection_name":qdrant.collection_name}
-    
+
 #     return JsonResponse({'success': True})
 
 
@@ -540,7 +545,7 @@ def move_file(source_path, destination_path):
 
 # def gestionar_contenido(texts):
 #     text_response_ai = ""
-    
+
 #     # Utilizar Pinecone para guardar los pdf nuevos y entrenar la IA:
 #     docsearch = Pinecone.from_texts([t.page_content for t in texts], embeddings, index_name=index_name)
 #     # docsearch = Pinecone.from_documents(texts, embeddings, index_name=index_name)
@@ -552,16 +557,16 @@ def move_file(source_path, destination_path):
 #     docs = docsearch.similarity_search('Qué es una organización?', include_metadata=True)
 #     print('docs:')
 #     print(docs)
-    
+
 #     # Conectar a la api de openAi
 #     llm = OpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
 #     chain = load_qa_chain(llm, chain_type="stuff")
-    
+
 #     text_response_ai = chain.run(input_documents=docs, question='Qué es una organización?')  
 
 #     print(text_response_ai)  
 #     return JsonResponse({'text_response_ai': text_response_ai}, safe=False)
- 
+
 
 
 def consultar_pdf(consulta):
@@ -570,7 +575,7 @@ def consultar_pdf(consulta):
     print('list_indexes')
     print(pinecone.list_indexes())
     print(index_name)
-    
+
     index = pinecone.GRPCIndex(index_name)
 
     print(index.describe_index_stats())
@@ -603,7 +608,7 @@ def consultar_pdf(consulta):
     chain = load_qa_chain(llm, chain_type="stuff")
     text_response_ai = chain.run(input_documents=vector_result, question=query)
     print(text_response_ai)
-    
+
 
 
 #### Otra forma #################################################################################
@@ -701,7 +706,7 @@ def consultar_pdf(consulta):
 #     # chain = load_qa_chain(llm, chain_type="stuff")
 #     # text_response_ai = chain.run(input_documents=vector_result, question=query)
 #     # print(text_response_ai)
-    
+
 
 #     text_response_ai = results["output_text"]
 
@@ -723,7 +728,7 @@ def upload_pdf(request):
         if request.method == 'POST' and request.FILES['pdf']:
             pdf_file = request.FILES['pdf']
             print('Nombre del PDF: ' + pdf_file.name)
-            
+
             audio_file = request.FILES['audio_file']
             print('Nombre del audio: ' + audio_file.name)
 
@@ -736,13 +741,13 @@ def upload_pdf(request):
             file_path = 'assets/audio_files/' + nombre_audio
 
             print('file_path: ' + file_path)
-            
+
             with open(file_path, 'wb+') as archivo:
                 for chunk in audio_file.chunks():
                     archivo.write(chunk)
 
             print("El archivo se ha guardado en:", file_path)
-                     
+
             with open('assets/pdf_files/' + pdf_file.name, 'wb') as f:
                 for chunk in pdf_file.chunks():
                     f.write(chunk)
@@ -751,7 +756,7 @@ def upload_pdf(request):
             # return JsonResponse({'success': True})
         else:
             return JsonResponse({'success': False})
-        
+
 
 def read_pdf_sin_scan(pdf_file, file_path):
 
@@ -763,7 +768,7 @@ def read_pdf_sin_scan(pdf_file, file_path):
         reader=PdfReader(pdf_file) 
         for page in reader.pages: 
             text+=page.extract_text()
- 
+
         print('Try - Text: ' + text)
 
         return request_voice_prompt(text, file_path)
@@ -777,25 +782,23 @@ def request_voice_prompt(text, file_path):
     print('file_path dentro de request_voice_prompt: ' + file_path)
     # Obtener texto del audio Con Whisper desde la api de openAi: (Mucho más rápido)
     audio_file_2= open(file_path, "rb")
-    
-    transcript_2 = openai.Audio.transcribe("whisper-1", audio_file_2)
 
-    print('transcript_2 dentro de request_voice_prompt:' + transcript_2["text"])
+    transcript_2 = client.audio.transcribe("whisper-1", audio_file_2)
 
-    text_prompt_2 = 'En relación al siguiente texto: "' + text +  '" la siguiente consulta: ' + transcript_2["text"]
+    print('transcript_2 dentro de request_voice_prompt:' + transcript_2.text)
+
+    text_prompt_2 = 'En relación al siguiente texto: "' + text +  '" la siguiente consulta: ' + transcript_2.text
 
     print('text_prompt_2 dentro de request_voice_prompt: ' + text_prompt_2)
 
     # Llamar a la API de OpenAI utilizando el texto generado por el audio como prompt
     model = "text-davinci-002"
-    response = openai.Completion.create(
-        engine=model,
-        prompt=text_prompt_2,
-        max_tokens=1000,
-        n=1,
-        stop=None,
-        temperature=0.5,
-    )
+    response = client.completions.create(engine=model,
+    prompt=text_prompt_2,
+    max_tokens=1000,
+    n=1,
+    stop=None,
+    temperature=0.5)
 
     # Obtener el texto generado por el modelo de OpenAI
     generated_text_2 = response.choices[0].text
@@ -816,9 +819,9 @@ def upload_pdf_langchain(request):
         if request.method == 'POST' and request.FILES['pdf']:
 
             # Gestionar Audio:
-            
+
             audio_file = request.FILES['audio_file']
-            
+
             print('Nombre del audio: ' + audio_file.name)
 
             nombre_audio = audio_file.name + '.wav'
@@ -828,7 +831,7 @@ def upload_pdf_langchain(request):
             file_path_audio = 'assets/audio_files/' + nombre_audio
 
             print('file_path_audio: ' + file_path_audio)
-            
+
             with open(file_path_audio, 'wb+') as archivo:
                 for chunk in audio_file.chunks():
                     archivo.write(chunk)
@@ -836,23 +839,23 @@ def upload_pdf_langchain(request):
             print("El archivo se ha guardado en:", file_path_audio)
 
             audio_file_to_transcript = open(file_path_audio, "rb")
-    
-            transcript = openai.Audio.transcribe("whisper-1", audio_file_to_transcript)
 
-            transcript_text = transcript["text"]
+            transcript = client.audio.transcribe("whisper-1", audio_file_to_transcript)
+
+            transcript_text = transcript.text
 
             print('Contenido del audio dentro de upload_pdf_langchain: ' + transcript_text)
 
             # Gestionar Pdf:
 
             pdf_file = request.FILES['pdf']
-            
+
             print('Nombre del PDF: ' + pdf_file.name)
-            
+
             file_path = 'assets/pdf_files/' + pdf_file.name
 
             print('file_path: ' + file_path)
-            
+
             with open(file_path, 'wb') as f:
                 for chunk in pdf_file.chunks():
                     f.write(chunk)
@@ -874,9 +877,9 @@ def upload_pdf_langchain(request):
             print('index_name: ')
             print(index_name)
             docsearch = Pinecone.from_texts([t.page_content for t in texts], embeddings, index_name=index_name)
-            
+
             # query = "What are examples of good data science teams?" (se volvió transcript_text)
-            
+
             # docs = docsearch.similarity_search(transcript_text, include_metadata=True)
 
             # print('docs:')
@@ -914,6 +917,7 @@ def send_pusher_event(request):
     return JsonResponse({'success': True})
 
 # @csrf_exempt
+
 # def send_pusher_event_cohere(request):
 #     request.upload_handlers.pop(0)    
 #     data = json.loads(request.body)
