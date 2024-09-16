@@ -42,28 +42,43 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 # from langchain_community.vectorstores import Chroma, Pinecone, Qdrant
 from langchain.vectorstores import Pinecone
 # from langchain_community.embeddings.openai import OpenAIEmbeddings
-from langchain_openai import OpenAIEmbeddings
+# from langchain_openai import OpenAIEmbeddings
 
-import pinecone
-from pinecone import Pinecone, ServerlessSpec
+# import pinecone
+from pinecone import Pinecone as PineconeClient, ServerlessSpec
 from langchain_community.llms import OpenAI
+# from langchain.chains.question_answering import load_qa_chain
 from langchain.chains.question_answering import load_qa_chain
 from langchain.chains import RetrievalQAWithSourcesChain
 from langchain_community.chat_models import ChatOpenAI
 from qdrant_client import QdrantClient
 from pinecone.core.openapi.shared.exceptions import PineconeApiException
 
+from langchain_pinecone import Pinecone  # Cambiamos la importación
+from langchain_pinecone import Pinecone as PineconeVectorStore
+# from langchain.vectorstores.pinecone import PineconeVectorStore
+# from langchain.vectorstores import Pinecone as PineconeVectorStore
+# from langchain_pinecone import PineconeVectorStore
+
+import pinecone  # Asegúrate de importar correctamente el paquete Pinecone
+from langchain.embeddings.openai import OpenAIEmbeddings  # Import correcto desde langchain
+# from langchain.vectorstores.pinecone import Pinecone as LangchainPinecone
+from langchain.chains import load_chain
+from langchain.llms import OpenAI
+
+
 # Inicialización de OpenAI
-OPENAI_API_KEY = 'sk-xvfPHuONQIh7sIFhfLETURVW3KPla-Satcn4EhUu-PT3BlbkFJcHuEfiQImq07_bI5S_GOet4tzSQaD_txn8m37qMugA'
+OPENAI_API_KEY = 'sk-tqTwfvZ9fkkTpi9xC4e2YMFJzNtvRoeW94Ld50WfltT3BlbkFJCX_Fi09aJPqs-t2JAd1xjQgzK81xhkyTe33v8D-W0A'
 
 # Inicialización de Pinecone
 PINECONE_API_KEY = 'e1870b8a-1371-4d9f-b4ac-757a9d69b06e'
 PINECONE_API_ENV = 'us-east-1'
 
-embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+# Crear una instancia del cliente de Pinecone
+pc = PineconeClient(api_key=PINECONE_API_KEY)
 
-# Inicialización de Pinecone
-pc = Pinecone(api_key=PINECONE_API_KEY)
+# Embeddings con OpenAI, usando el import correcto desde langchain.embeddings
+embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 
 # Definir el nombre del índice
 index_name = "chat-documents-ai"
@@ -77,11 +92,11 @@ if index_name not in existing_indexes:
             dimension=1536,  # Dimensiones según tu configuración
             metric='cosine',  # Métrica según tu configuración
             spec=ServerlessSpec(
-                cloud='aws',  # Cloud según tu configuración
-                region='us-east-1'  # Región según tu configuración
+                cloud='aws',
+                region=PINECONE_API_ENV
             )
         )
-    except PineconeApiException as e:
+    except pinecone.exceptions.PineconeApiException as e:
         if e.status == 409:
             print(f"El índice '{index_name}' ya existe.")
         else:
@@ -89,8 +104,47 @@ if index_name not in existing_indexes:
 else:
     print(f"El índice '{index_name}' ya existe. No se necesita crear uno nuevo.")
 
-# Conectar al índice
+# Conectar al índice asegurándonos de que el host sea un string
 index = pc.Index(index_name)
+
+# # Inicialización de OpenAI
+# OPENAI_API_KEY = 'sk-tqTwfvZ9fkkTpi9xC4e2YMFJzNtvRoeW94Ld50WfltT3BlbkFJCX_Fi09aJPqs-t2JAd1xjQgzK81xhkyTe33v8D-W0A'
+
+# # Inicialización de Pinecone
+# PINECONE_API_KEY = 'e1870b8a-1371-4d9f-b4ac-757a9d69b06e'
+# PINECONE_API_ENV = 'us-east-1'
+
+# embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+
+# # Inicialización de Pinecone
+# pc = Pinecone(api_key=PINECONE_API_KEY)
+
+# # Definir el nombre del índice
+# index_name = "chat-documents-ai"
+
+# # Verificar si el índice ya existe
+# existing_indexes = pc.list_indexes()
+# if index_name not in existing_indexes:
+#     try:
+#         pc.create_index(
+#             name=index_name,
+#             dimension=1536,  # Dimensiones según tu configuración
+#             metric='cosine',  # Métrica según tu configuración
+#             spec=ServerlessSpec(
+#                 cloud='aws',  # Cloud según tu configuración
+#                 region='us-east-1'  # Región según tu configuración
+#             )
+#         )
+#     except PineconeApiException as e:
+#         if e.status == 409:
+#             print(f"El índice '{index_name}' ya existe.")
+#         else:
+#             raise e
+# else:
+#     print(f"El índice '{index_name}' ya existe. No se necesita crear uno nuevo.")
+
+# # Conectar al índice
+# index = pc.Index(index_name)
 
 # Definición de funciones:
 def obtener_listado_archivos(self):
@@ -223,30 +277,41 @@ def move_file(source_path, destination_path):
     except Exception as e:
         print(f"Ocurrió un error al mover el archivo: {str(e)}")
 
+
+
+
 def consultar_pdf(consulta):
     print(f'Consultar_pdf: {consulta}')
-    print('list_indexes')
-    print(pinecone.list_indexes())
+    
+    # Listar índices correctamente usando el cliente `pc`
+    print('Listando índices...')
+    print(pc.list_indexes())  # Ahora listamos los índices a través del cliente Pinecone.
     print(index_name)
 
-    index = pinecone.GRPCIndex(index_name)
+    # Describir el índice
     print(index.describe_index_stats())
 
     text_field = "text"
-    index = pinecone.Index(index_name)
-    vectorstore = Pinecone(index, embeddings.embed_query, text_field)
 
-    query = consulta
-    vector_result = vectorstore.similarity_search(query, k=3)
+    # Usamos `PineconeVectorStore` desde `langchain_pinecone`
+    vectorstore = PineconeVectorStore(index=index, text_key=text_field, embedding=embeddings)
+
+    # Realizar la búsqueda de similitud por texto en lugar de vector
+    vector_result = vectorstore.similarity_search(consulta, k=3)
 
     print('vector_result')
     print(vector_result)
 
+    # Usar el modelo de OpenAI
     llm = OpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
+    
+    # Cargar la cadena de preguntas y respuestas
     chain = load_qa_chain(llm, chain_type="stuff")
-    text_response_ai = chain.run(input_documents=vector_result, question=query)
+    text_response_ai = chain.run(input_documents=vector_result, question=consulta)
+    
     print(text_response_ai)
 
+    # Enviar la respuesta usando pusher
     pusher_client.trigger('chat', 'message', {
         'theme': 'is-link',
         'username': 'Conversation UI',
