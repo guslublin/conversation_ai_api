@@ -25,7 +25,7 @@ from chatbot.views import entrenar_ia
 # from chatbot.views import entrenar_ia_cohere
 from chatbot.views import consultar_pdf
 # from chatbot.views import consultar_pdf_cohere
-from chatbot.views import upload_pdf_langchain
+# from chatbot.views import upload_pdf_langchain
 from chatbot.views import send_pusher_event
 # from chatbot.views import send_pusher_event_cohere
 from django.views.decorators.csrf import csrf_exempt
@@ -52,5 +52,5 @@ urlpatterns = [
     path('subir_pdf/', csrf_exempt(subir_pdf), name='subir_pdf'),
     # path('subir_pdf_cohere/', csrf_exempt(subir_pdf_cohere), name='subir_pdf_cohere'),
     
-    path('upload_pdf_langchain/', csrf_exempt(upload_pdf_langchain), name='upload_pdf_langchain'),
+    # path('upload_pdf_langchain/', csrf_exempt(upload_pdf_langchain), name='upload_pdf_langchain'),
 ]
